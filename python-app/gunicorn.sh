@@ -1,2 +1,10 @@
 #!/bin/sh
-gunicorn --chdir app app:application -w 4 --threads 2 -b 0.0.0.0:5000
+
+echo "APPLICATION_DIRECTORY: ${APPLICATION_DIRECTORY}"
+echo "MODULE_NAME: ${MODULE_NAME}"
+echo "VARIABLE_NAME: ${VARIABLE_NAME}"
+echo "NUMBER OF WORKER PROCESSES: ${WORKER_PROCESS}"
+echo "NUMBER OF THREADS: ${THREAD}"
+echo "SERVER_PORT: ${SERVER_PORT}"
+
+gunicorn --chdir ${APPLICATION_DIRECTORY} ${MODULE_NAME}:${VARIABLE_NAME} -w ${WORKER_PROCESS} --threads ${THREAD} -b 0.0.0.0:$SERVER_PORT
