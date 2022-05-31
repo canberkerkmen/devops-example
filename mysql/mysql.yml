@@ -1,0 +1,25 @@
+version: '3'
+services:
+  database:
+    image: mysql:8.0.29@sha256:0c0beeac7ca1937d60f54e1fb0c4a5c0b0ffee2aae37488fbc9f5ea301425551
+    platform: linux/x86_64
+    container_name: mysql-container
+    restart: always
+    environment:
+      MYSQL_DATABASE: db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - '3306:3306'
+    volumes:
+      - my-db:/var/lib/mysql
+    networks:
+      - development
+volumes:
+  my-db:
+    external: false
+networks:
+  development:
+    name: development_network
+    external: false
