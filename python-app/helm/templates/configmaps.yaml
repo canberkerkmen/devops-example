@@ -1,0 +1,20 @@
+{{- if .Values.configMaps -}}
+{{- $fullName := include "helm.fullname" . -}}
+apiVersion: v1
+kind: List
+metadata:
+  name: {{ include "helm.fullname" . }}
+items:
+{{- range .Values.configMaps }}
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: {{ printf "%s-%s" $fullName .name }}
+  data:
+  {{- if .data.path }}
+    {{- with .data.path }}
+{{ ($.Files.Glob .).AsConfig | indent 4 }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

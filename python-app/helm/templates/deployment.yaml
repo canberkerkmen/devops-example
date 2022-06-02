@@ -1,0 +1,105 @@
+{{- $relname := .Release.Name -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helm.fullname" . }}
+  labels:
+    {{- include "helm.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+replicas: {{ .Values.replicaCount }}
+  {{- end }}
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 50%
+    maxSurge: 50%
+selector:
+  matchLabels:
+    {{- include "helm.selectorLabels" . | nindent 6 }}
+template:
+  metadata:
+    annotations:
+      checksum/config: {{ include (print $.Template.BasePath "/configmaps.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+    labels:
+      {{- include "helm.selectorLabels" . | nindent 8 }}
+  spec:
+    {{- with .Values.imagePullSecrets }}
+    imagePullSecrets:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+    serviceAccountName: {{ include "helm.serviceAccountName" . }}
+    securityContext:
+      {{- toYaml .Values.podSecurityContext | nindent 8 }}
+    containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: '{{- coalesce .Values.image.fqin (printf "%s:%s" .Values.image.repository (.Values.image.tag | default (.Chart.AppVersion | replace "+" "-"))) }}'
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+          - name: http
+            containerPort: 80
+            protocol: TCP
+        {{- if .Values.image.readiness.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.image.readiness.path | default "/" | quote }}
+            port: {{ .Values.image.readiness.port | default 80 }}
+          initialDelaySeconds: {{ .Values.image.readiness.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .Values.image.readiness.periodSeconds | default 10 }}
+          failureThreshold: {{ .Values.image.readiness.failureThreshold | default 3 }}
+          successThreshold: {{ .Values.image.readiness.successThreshold | default 1 }}
+        {{- end }}
+        {{- if .Values.image.liveness.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.image.liveness.path | default "/" | quote }}
+            port: {{ .Values.image.liveness.port | default 80 }}
+          initialDelaySeconds: {{ .Values.image.liveness.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .Values.image.liveness.periodSeconds | default 10 }}
+          failureThreshold: {{ .Values.image.liveness.failureThreshold | default 3 }}
+          successThreshold: 1
+        {{- end }}
+        env:
+          {{- if .Values.env }}
+          {{- toYaml .Values.env | nindent 12 }}
+          {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+        volumeMounts:
+        {{- range .Values.configMaps }}
+        - name: {{ printf "%s-%s" $relname .name }}
+          mountPath: {{ .data.mountPath }}
+        {{- end }}
+        {{- range .Values.secrets }}
+        - name: {{ printf "%s-%s" $relname .name }}
+          mountPath: {{ .data.mountPath }}
+        {{- end }}
+    volumes:
+    {{- range .Values.configMaps }}
+    - name: {{ printf "%s-%s" $relname .name }}
+      configMap:
+        name: {{ printf "%s-%s" $relname .name }}
+    {{- end }}
+    {{- range .Values.secrets }}
+    - name: {{ printf "%s-%s" $relname .name }}
+      secret:
+        name: {{ .name }}
+    {{- end }}
+    {{- with .Values.nodeSelector }}
+    nodeSelector:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+    affinity:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+    tolerations:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}

@@ -1,0 +1,93 @@
+replicaCount: 1
+
+image:
+  repository: canberkerkmen/python-app
+  pullPolicy: IfNotPresent
+  readiness:
+    enabled: true
+    path: "/health"
+    port: 80
+    initialDelaySeconds: 1
+    periodSeconds: 30
+    failureThreshold: 3
+    successThreshold: 1
+  liveness:
+    enabled: true
+    path: "/health"
+    port: 80
+    initialDelaySeconds: 1
+    periodSeconds: 120
+    failureThreshold: 3
+
+imagePullSecrets:
+  - name: registrypullsecret
+
+nameOverride: ""
+fullNameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullName template
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  targetPort: 8080
+  port: 80
+
+ingress:
+  enabled: false
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: 250m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+  hosts:
+    - host: example-subdomain.domain.com.tr
+      paths:
+        - "/example-app(/|$)(.*)"
+  tls: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+  requests:
+    cpu: 100m
+    memory: 250Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80      
+
+configMaps:
+  - name: application-config
+    labels: {}
+    annotations: {}
+    data:
+      path: "config/liv/**"
+      mountPath: "/etc/config"
+
+secrets:
+  - name: application-secret
+    data:
+      mountPath: /app/secret
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
