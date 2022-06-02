@@ -1,0 +1,49 @@
+- name: Add an apt signing key
+  apt_key:
+    url: "{{ apt_key }}"
+    state: present
+
+- name: Add apt repository
+  apt_repository:
+    repo: "{{ apt_repo }}"
+    state: present
+    filename: "{{ apt_filename }}"
+
+- name: Install dependencies
+  apt: 
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+
+- name: Copy file to remote
+  copy:
+    src:  "{{ copy_file_src_url }}"
+    dest: "{{ copy_file_dest_url }}"
+  notify: restart_kubelet_service
+
+- name: Delete file to remote
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items: "{{ files_to_delete }}"
+  notify: restart_containerd_service
+
+## Kubelet will not start if the system has swap enabled, so we are disabling swap.
+- name: Remove swapfile from /etc/fstab
+  mount:
+    name: "{{ item }}"
+    fstype: swap
+    state: absent
+  with_items:
+    - swap
+    - none
+
+- name: Disable swap
+  command: swapoff -a
+  when: ansible_swaptotal_mb > 0
+
+- name: Configure node ip
+  lineinfile:
+    path: /etc/default/kubelet
+    line: KUBELET_EXTRA_ARGS=--node-ip={{ node_ip }}
+    create: yes

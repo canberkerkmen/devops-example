@@ -1,0 +1,26 @@
+## We will be installing the following packages, and then adding a user named “vagrant” to the “docker” group. 
+# docker-ce 
+# docker-ce-cli 
+# containerd.io
+- name: Installing Dependency for Ubuntu, Docker, Kubernetes
+  hosts: all
+  become: true
+  roles:
+    - role: ubuntu-dependency
+    - role: docker
+    - role: kubernetes
+
+- name: Joining K8s Cluster
+  hosts: all
+  become: true
+
+  tasks:
+## Join the nodes to the Kubernetes cluster.
+  - name: Copy the join command to server location
+    copy:
+      src: join-command
+      dest: /tmp/join-command.sh
+      mode: 0777
+
+  - name: Join the node to cluster
+    command: sh /tmp/join-command.sh

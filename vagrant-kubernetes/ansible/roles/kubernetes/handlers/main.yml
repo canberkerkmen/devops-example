@@ -1,0 +1,14 @@
+- name: Ensure that kubelet is restarted
+  service:
+    name: kubelet
+    daemon_reload: yes
+    state: restarted
+    enabled: yes
+  listen: restart_kubelet_service
+- name: Ensure that containerd is restarted
+  service:
+    name: containerd
+    daemon_reload: yes
+    state: restarted
+    enabled: yes
+  listen: restart_containerd_service

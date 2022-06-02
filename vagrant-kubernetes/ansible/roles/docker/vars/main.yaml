@@ -1,0 +1,7 @@
+packages:
+  - docker-ce 
+  - docker-ce-cli 
+  - containerd.io
+apt_key: https://download.docker.com/linux/ubuntu/gpg
+apt_repo: deb https://download.docker.com/linux/ubuntu bionic stable
+user: vagrant

@@ -1,0 +1,11 @@
+packages:
+  - kubelet 
+  - kubeadm 
+  - kubectl
+apt_key: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+apt_repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+apt_filename: kubernetes.list
+copy_file_src_url: files/calico.yaml
+copy_file_dest_url: calico.yaml
+files_to_delete: 
+  - /etc/containerd/config.toml
