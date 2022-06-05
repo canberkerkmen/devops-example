@@ -32,3 +32,4 @@ bin/
 
 vagrant-kubernetes/.vagrant/
 vagrant-kubernetes/ansible/join-command
+vagrant-kubernetes/ansible/kubeconfig

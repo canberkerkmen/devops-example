@@ -1,0 +1,84 @@
+pipeline {
+    environment {
+        DOCKER_REGISTRY_TAG = 'canberkerkmen'
+        MASTER_NODE_IP = '192.168.50.10'
+        MASTER_PORT = '6443'
+        CLUSTER = 'test-cluster'
+        NAMESPACE = ''
+        TOKEN= ''
+    }
+    agent any
+    stages {
+        stage('Test stage') {
+            steps {
+                sh """
+                    python app/test_utils.py 
+                    """
+            }
+        }
+        stage('Lint Dockerfile') {
+            steps {
+                script {
+                    docker.image('hadolint/hadolint:2.4.0-debian').inside() {
+                            sh 'hadolint ./Dockerfile | tee -a hadolint_lint.txt'
+                            sh '''
+                                lintErrors=$(stat --printf="%s"  hadolint_lint.txt)
+                                if [ "$lintErrors" -gt "0" ]; then
+                                    echo "Errors have been found, please see below"
+                                    cat hadolint_lint.txt
+                                    exit 1
+                                else
+                                    echo "There are no erros found on Dockerfile!!"
+                                fi
+                            '''
+                    }
+                }
+            }
+        }   
+        stage('Build & Push Docker Image') {
+            steps {
+                script{
+                    withDockerRegistry([url: "", credentialsId: "dockerhub"]) {
+                    def dockerfile = 'Dockerfile'
+                    docker.build("${DOCKER_REGISTRY_TAG}/python-app:${BUILD_NUMBER}", "-f ${dockerfile} --build-arg REQUIREMENTS_FULL_PATH=requirements.txt .").push()
+                    }
+                }
+            }
+        }
+        stage('Lint Helm') {
+            steps {
+                sh 'helm lint helm -f helm/values-tst.yaml --with-subcharts'
+            }
+        }
+        stage('Push Helm Chart') {
+            steps {
+                sh """
+                    helm push chart ${HELM_REGISTRY}/helm/python-app:0.1.${BUILD_NUMBER} --app-version 1.0.${BUILD_NUMBER} --dependency-update
+                """
+            }
+        }
+        /*stage('Set current kubectl context') {
+            steps{
+                  withAWS(credentials: 'Jenkins') {
+                    sh  """
+                        kubectl config set-cluster ${CLUSTER} --server=http://${MASTER_NODE_IP}:${MASTER_PORT} --api-version=v1 && kubectl config use-context test-cluster
+                        """
+                  }
+            }
+        }*/
+        stage('Wait user approve') {
+            steps {
+                input "Ready to deploy application?"
+            }
+        }
+        stage('Package Helm') {
+            steps {
+                sh """
+                    helm install python-app ${HELM_REGISTRY}/helm/python-app --version 1.0.${BUILD_NUMBER} --values values-tst.yaml --kube-context ${CLUSTER} --namespace ${NAMESPACE} --kube-token ${TOKEN} --kubeconfig kubeconfig
+                """
+            }
+        }
+        
+        
+    }
+}

@@ -33,10 +33,17 @@
     become: false
     command: kubeadm token create --print-join-command
     register: join_command
-
+ 
   - name: Copy
     become: false
     local_action: 
       module: copy 
       content: "{{ join_command.stdout_lines[0] }}"
       dest: "{{ playbook_dir }}/join-command"
+
+## Get kubeconfig file from master
+  - name: Get kubeconfig
+    fetch:
+      src: .kube/config
+      dest: "{{ playbook_dir }}/kube_config"
+      flat: yes
