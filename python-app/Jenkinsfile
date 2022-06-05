@@ -9,6 +9,14 @@ pipeline {
     }
     agent any
     stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    git credentialsId: 'jenkins-user-github', url: 'https://github.com/canberkerkmen/devops-example.git'
+                    sh "git checkout release/tst"
+          }
+       }
+    }
         stage('Test stage') {
             steps {
                 sh """
