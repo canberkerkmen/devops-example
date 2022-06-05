@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "custom-mysql.fullname" . }}
+  labels:
+    {{- include "custom-mysql.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "custom-mysql.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "custom-mysql.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "custom-mysql.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          env:
+          {{- if .Values.env }}
+          {{- toYaml .Values.env | nindent 12 }}
+          {{- end }}
+          resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          {{- range .Values.configMaps }}
+          - name: {{ printf "%s-%s" .Release.Name .name }}
+            mountPath: {{ .data.mountPath }}
+          {{- end }}
+          {{- range .Values.secrets }}
+          - name: {{ printf "%s-%s" .Release.Name .name }}
+            mountPath: {{ .data.mountPath }}
+          {{- end }}
+          {{- if .Values.pvc }}
+          - name: {{ printf "%s-persistent-storage" .Release.Name }}
+            mountPath: {{ .Values.pvc.mountPath }}
+          {{- end }}
+      volumes:
+      {{- range .Values.configMaps }}
+      - name: {{ printf "%s-%s" .Release.Name .name }}
+        configMap:
+          name: {{ printf "%s-%s" .Release.Name .name }}
+      {{- end }}
+      {{- range .Values.secrets }}
+      - name: {{ printf "%s-%s" .Release.Name .name }}
+        secret:
+          name: {{ .name }}
+      {{- end }}
+      {{- if .Values.pvc }}
+      - name: {{ printf "%s-persistent-storage" .Release.Name }}
+        persistentVolumeClaim:
+          claimName: {{ printf "%s" .Release.Name }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
